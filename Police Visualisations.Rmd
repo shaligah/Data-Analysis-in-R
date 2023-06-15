@@ -1,0 +1,277 @@
+---
+title: "Texas Police Data Visualisation"
+author: "Selorm Haligah"
+date: "27/04/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# INTRODUCTION
+
+This report is an analysis of policing data set of Dallas, Texas in the year 2016. It presents data visualizations of key inferences and interpretation of findings from the analysis.
+
+## Loading the necessary libraries
+To perform  the necessary analysis, certain libraries need to be installed. The libraries were retrieved from CRAN. 
+```{r, eval=FALSE}
+install.packages("plotly")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("leaflet")
+install.packages("reshape")
+install.packages("RColorBrewer")
+install.packages("leaflet")
+```
+```{r, message=FALSE, warning=FALSE}
+library("plotly")
+library("dplyr")
+library("ggplot2")
+library("leaflet")
+library("reshape")
+library("RColorBrewer")
+library("leaflet")
+```
+## Loading the data
+``` {r}
+data <- read.csv("C:/Users/sehal/OneDrive/Desktop/Texas Visualia/37-00049_UOF-P_2016_prepped.csv")
+```
+
+## Prepping the data
+### Exploring the data
+It is key to know the data types that are being dealt with and the whole shape of the data set to know to proceed with the analysis
+``` {r, eval = TRUE}
+str(data)
+dim(data)
+```
+The first row of the data set is not needed for the analysis as such it is necessary to remove it
+```{r, eval= TRUE}
+data2 <- data[2:2384,]
+```
+Checking the outcome from the shape:
+```{r}
+dim(data2)
+```
+### Conversion of necessary columns 
+All values are in character format as such it is necessary to convert the necessary column data types to a format that would support the analysis to be made. The date, locations, years on the force and subject offence have been considered for conversion. The OFFICER_YEARS_ON_FORCE, LOCATION_LATITUDE, LOCATION_LONGITUDE were converted to numerical datatypes with the INCIDENT_DATE converted to Date data types and SUBJECT_OFFENSE converted as factors. 
+```{r, eval=TRUE}
+data2$OFFICER_YEARS_ON_FORCE <- as.numeric(as.character(data2$OFFICER_YEARS_ON_FORCE))
+data2$LOCATION_LATITUDE <- as.numeric(as.character(data2$LOCATION_LATITUDE))
+data2$LOCATION_LONGITUDE <- as.numeric(as.character(data2$LOCATION_LONGITUDE))
+data2$INCIDENT_DATE <- as.Date(data2$INCIDENT_DATE, format = "%m/%d/%y")
+data2$SUBJECT_OFFENSE <-as.factor(as.character(data2$SUBJECT_OFFENSE))
+```
+
+We then check if they have been converted appropriately:
+```{r, eval=TRUE}
+str(data2)
+```
+# ANALYSIS OF THE DATASET
+## Number of Reported Incidents
+The figure below is a barplot that represents the total number of reported cases in Dallas, Texas in 2016. In total there were 2048 incidents that ended in arrests and 335 incidents that did not end in arrests, indicating that the total number of reported incidents were `r 2048 + 335`
+```{r,eval=TRUE}
+g = ggplot(data2, aes(x=SUBJECT_WAS_ARRESTED))
+(g1 = g+ geom_bar(fill = 'black')+ylab('Number of incidents') +xlab('Incidence of arrest')+ ylim(0,2500) +ggtitle("BARPLOT OF REPORTED INCIDENTS") + theme_bw()+ theme(axis.title.y=element_text(vjust=1.5, size = 12, face = 'bold'), plot.title = element_text(face = 'bold'), axis.title.x = element_text(size = 12,face = 'bold')))
+```
+
+## Table of Reported Cases by Officer Race
+The table below shows that White officers were the most to respond to reported incidents, accounting for 61.7% of the total reported cases in Dallas. Hispanic Officers came in second, handling about 20.2% of the total cases reported in the region. The table also shows us that American Ind officers were least involved in the number reported cases in the region, accounting for about 0.336%
+```{r, eval=TRUE}
+data2 %>% group_by(OFFICER_RACE)%>% summarize(count = n())%>% mutate(percentage =  100*(count/sum(count))) %>% arrange(desc(percentage))
+```
+## Reported Cases by Officer Gender
+The barplot below provides an overview of the number cases handled by police officers based on their gender. The graph shows that the male officers handled `r 2143 - 240` more cases than female officers. 
+```{r, eval=TRUE}
+G3 = ggplot(data2, aes(x=OFFICER_GENDER )) + geom_bar() +ylim(0,2500) +ggtitle('BARPLOT OF REPORTED CASES BY OFFICER GENDER & RACE')+theme(axis.title.y=element_text(vjust=1.5, size = 12, face = 'bold'),axis.title.x=element_text(size = 12, face = 'bold'), plot.title = element_text(face ='bold'))
+ggplotly(G3)
+Fig1 <-ggplotly(G3) 
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig1, 'Fig1.html')
+```
+## Reported Cases by Officer Race and Gender
+The graph below shows the proportions of handled cases of the Dallas Police Department in 2016 based on officer race. From a glance, we an deduce that overall, male officers from all different backgrounds handled more incidents than their female counterparts, specifically, male officers, from all different races handled more than 70% of the incidents that were reported. 
+```{r, eval= TRUE}
+G0 = ggplot(data2, aes(x = OFFICER_RACE, fill = OFFICER_GENDER)) + geom_bar(position = 'fill')+ylab('Percentage(%)')+ggtitle("PROPORTIONAL STACKED PLOT OF REPORTED\n INCIDENTS BASED ON OFFICER RACE & GENDER")+theme(axis.title.y=element_text(vjust=1.5, size = 11, face = 'bold'), axis.title.x = element_text(face = 'bold'),plot.title = element_text(face = 'bold'))
+ (Fig2 = ggplotly(G0))
+```
+
+```{r, echo=FALSE}
+htmlwidgets::saveWidget(Fig2, 'Fig2.html')
+```
+
+## Distribution of Police:
+### 1.Based on the number of years on the force
+The boxplot below allows us to see the distribution of the police officers who handled cases in the department based on the number of years they had spent on the force. From the figure below, most of the officers on the police force who responded to the incidents in Dallas had spent relatively between three to ten years on the force.The boxplot allows us to infer that most of the officers who handled incidents have relatively similar years of experience on the force with just a few showing extreme years of experience. This could qualify as outliers outside the distribution.  
+```{r, echo=TRUE}
+G =  ggplot(data2, aes(y=OFFICER_YEARS_ON_FORCE)) + geom_boxplot() + theme_bw()+ theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y =element_text(size = 12),axis.title.y=element_text(vjust=1.5, size = 12, face = 'bold'),plot.title=element_text(face='bold'))+ylim(0,40)+ylab('Years on Force')+ggtitle("Boxplot of Number of Years Spent on Police Force") 
+(Fig3 <-ggplotly(G))
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig3, 'Fig3.html')
+```
+
+### 2.Based on Years and Gender
+The graph below is a boxplot that shows the distribution of the number of years police officers who handled incidents have spent in the Dallas Police Department, as distinguished by their gender. From the graph, the most a female officer has spent on the force is 31 years which is `r 36-31`  years lesser than the most a male officer has spent on the force. The distribution of male officers is slightly higher and wider than female officers, showing that male officers have spent relatively more years on the force than female officers. 
+```{r, eval=TRUE}
+G1 = ggplot(data2 , aes(y=OFFICER_YEARS_ON_FORCE))
+g3 =  G1 + geom_boxplot(aes(x=OFFICER_GENDER))+ylab('Years spent on police force') +xlab('Gender of Officer')+ggtitle("Boxplot of Number of Years Spent on Police Force \n by Police Gender") + ylim(0,40) + theme(plot.title = element_text(face='bold'), axis.title.y = element_text(vjust = 1.5, size = 12, face='bold'),axis.title.x = element_text(face = 'bold'))
+(Fig4 <-ggplotly(g3))
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig4, 'Fig4.html')
+```
+
+### 3.Based on Years, Gender and Race
+The boxplot below shows the distributions of the number of years police officers who responded to reported cases have spent in the Dallas Police Department based on their gender and race. From the graph, it can be seen that male officers of American Ind race who handled incidents had relatively spent more years on the force than all other officers.When it came to the officers of Asian Race, it can be seen that female officers who responded to incidents had relatively spent more years on the force than their male counterparts, unlike officers of Black, Hispanic and OTHER race whose males spent relatively more years on the force. For White officers who responded to incidents in Dallas, both male and female officers spent relatively the same number of years on the force, with male officers edging slightly above their female counterparts.
+```{r, eval=TRUE}
+g4 =  g3 + facet_wrap(~OFFICER_RACE) +ylab('Years spent on police force') +xlab('Gender of Officer') +ggtitle("Boxplot of Years Spent on Police Force by Police Gender and Race")
+(Fig5 <-ggplotly(g4))
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig5, 'Fig5.html')
+```
+
+## TABLE SHOWING THE AVERAGE NUMBER OF YEARS OF SERVICE OF AN OFFICER 
+The table below represents the average number of years an officer who handled an incident had spenton the force as grouped by their race. From the table, officers of American Ind. descent averagely had 16 years of experience on the force (the highest amongst all other race). This, in conjunction with the boxplots above, shows that the officers of American Ind had more experience than any other race. The race of officers of White descent also had the lowest number of years of experience on the force.
+```{r,eval=TRUE}
+data2 %>% group_by(OFFICER_RACE)%>% summarize(mean_years_on_force = mean(OFFICER_YEARS_ON_FORCE))
+```
+## FILTERING THE DATA BASED ON ONLY ARRESTS MADE
+The data was also filtered based on only the subjects that were arrested. The shape was also checked to verify if the filtering was successful. We can see that data3 has 2048 rows of data and 47 columns
+```{r, eval =TRUE}
+data3 = filter(data2, SUBJECT_WAS_ARRESTED == 'Yes')
+dim(data3)
+```
+
+## DETERMINING IF THERE IS A DIFFERENCE IN THE NUMBER OF YEARS SPENT ON THE FORCE BY THE DIFFERENT RACES
+From the graph we can see, based the statistic used, that there is some clear difference between the number of years spent on the force amongst the different races.
+```{r,eval=TRUE, warning=FALSE}
+G2 = ggplot(data3, aes(x=OFFICER_RACE, y= OFFICER_YEARS_ON_FORCE))
+g5 = G2 + xlab("") + ylab("Years on the force") + geom_violin(fill="red", alpha=0.4) + stat_summary(fun.y = median, geom='point') + ggtitle('VIOLIN PLOT OF THE YEARS SPENT ON POLICE FORCE \n BY OFFICER RACE') + theme(plot.title = element_text(face='bold'), axis.title.y = element_text(vjust = 1.5, size = 12, face='bold'))
+(Fig6 <-ggplotly(g5))
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig6, 'Fig6.html')
+```
+
+##  DISTRIBUTION OF ARRESTS:
+### 1.BY SUBJECT GENDER
+The table below shows the number of incidents that ended in arrests as grouped by the race of the subject. From the table, we can see that male subjects were the most offenders that ended up being arrested accounting for 81.1% of all arrests. Female offenders who ended up being arrested accounted for 18.5% of all arrested individuals. This is also represented by the barplot below.
+
+#### TABLE SHOWING NUMBER & PROPORTION OF ARRESTS BY SUBJECT GENDER
+```{r, eval=TRUE}
+(gender_arrests = data3 %>% group_by(SUBJECT_GENDER)%>% summarize(count = n())%>% mutate(percentage =  100*(count/sum(count))) %>% arrange(desc(percentage)))
+```
+```{r, eval=TRUE}
+(ggplot(gender_arrests, aes(x = SUBJECT_GENDER, y = percentage))+ geom_bar(stat = "identity") +xlab('Gender of Suspect') +ylab('percentage(%)')+ylim(0,100) +ggtitle(' BARPLOT SHOWING THE PERCENTAGE OF ARRESTS \n BY SUBJECT GENDER')+theme_bw() + theme(axis.text.y =element_text(size = 11),axis.title.y=element_text(vjust=1.5, size = 15),axis.title.x=element_text(size = 13)))
+```
+
+#### TABLE SHOWING NUMBER & PERCENTAGE OF ARRESTS GROUPED BY SUBJECT AND OPFFICER RACE
+```{r, eval=TRUE}
+race_arrests = data3 %>% group_by(SUBJECT_RACE, OFFICER_RACE)%>% summarize(count = n())%>% mutate(percentage =  100*(count/sum(count))) %>% arrange(desc(percentage))
+print.data.frame(race_arrests)
+```
+### 2.BY OFFICER_RACE
+The graph below is graph that shows the proportion of arrests based on subject race by each distinct officer race. From the graph we can see that American Ind. officers arrested criminals from only two races. From these races, about 36% were white and 64% were black. Asian officers were involved in arrests from three different races; White (46%), Hispanic(23%) and Black(31%). Black officers were involved in the arrests of subjects from four different races; Asian(22%), Black(16%), Hispanic(16%), White(13%) and individuals of unknown race(33%). Hispanic Officers were also involved in arresting subjects from five races with 11% of their arrests accounting for individuals with unknown races; White(10%), Other(12%), Hispanic(12%),Black(10%) and American Ind(47%). White officers were also involved in the arrests of individuals from five races; Asian(21%),Black(16%), Hispanic(15%), Unidentified race(20%) and Unknown(12%). What we can see is that the arrests made by White officers were relatively proportional amongst the subject races. On the other hand, it can be inferred that out of all arrests made by American Ind officers, majority of their offenders were black.
+```{r, eval=TRUE}
+(Fig7 <-ggplotly(ggplot(race_arrests, aes(x = OFFICER_RACE, y = percentage, fill = SUBJECT_RACE)) + geom_bar(stat = "identity", position = 'fill')+ ggtitle('PROPORTIONAL STACKED PLOT OF NUMBER OF ARRESTS BY \n POLICE & SUBJECT RACE') + theme(axis.title.y = element_text(vjust = 1.5, size = 12, face = 'bold'), axis.title.x = element_text(face = 'bold'),plot.title = element_text(face = 'bold'))))
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig7, 'Fig7.html')
+```
+
+The graph below is a side by side barplot that allows for the comparison of arrests of subjects by their race based on officers' race. From the graph we can see that amongst all officer races, white police officers were involved in more arrests than any other race. We can also see that all American Ind suspects were arrested by Hispanic Officers. We can also see that 80% of all Asian suspects were arrested by White Officers, with Black officers accounting for the remaining 20%. For Black suspects, White officers were responsible for majority of their arrests, accounting for 62% with American Ind accounting for the least proportion of their arrests. The same situation applies to Hispanic suspects, with White officers accounting for majority of their arrests and American Ind accounting fo the least proportion of their arrests. 
+```{r,eval=TRUE}
+(Fig8 <-ggplotly(ggplot(race_arrests, aes(x = OFFICER_RACE, y = percentage, fill = SUBJECT_RACE)) + geom_bar(stat = "identity", position = 'dodge') + ggtitle('SIDE BY SIDE PROPORTIONAL PLOT OF ARRESTS \n BASED ON POLICE & SUBJECT RACE')+theme(axis.title.y = element_text(vjust = 1.5, size = 12, face = 'bold'),axis.title.x = element_text(size = 12, face = 'bold'), plot.title = element_text(face = 'bold'))))
+```
+
+```{r, echo=FALSE}
+htmlwidgets::saveWidget(Fig8, 'Fig8.html')
+```
+
+## INJURIES:
+#### DISTRIBUTION OF OFFICER ARRESTS BY TOTAL NUMBER OF ARRESTS
+From the table we can see that out of `r 1822 +226` arrests, only 226 accounts for officer getting injured, accounting for 11% of the data.
+```{r, eval=TRUE}
+(injurydata = data3 %>% group_by(OFFICER_INJURY) %>% summarize(count = n()) %>% mutate(percentage =  100*(count/sum(count))))
+```
+
+``` {r,eval= TRUE}
+(Fig11 <-ggplotly(ggplot(data2, aes(x=OFFICER_INJURY, fill = OFFICER_HOSPITALIZATION)) + geom_bar(position = 'fill') + ggtitle('PROPORTTIONAL STACKED PLOT OF OFFICER INJURIES')+ylab('proportion')+theme(axis.title.y = element_text(vjust = 1.5, size = 12, face = 'bold'),axis.title.x = element_text(size = 12, face = 'bold'), plot.title = element_text(face = 'bold'))))
+```
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig11, 'Fig11.html')
+```
+
+### DISTRIBUTION OF OFFICER ARRESTS THAT ENDED IN OFFICER HOSPITALISATIONS
+From  the table we can see that 97.7% of Subject Arrests did not end up with Officers getting Hospitalized, while only 2.29% of arrested incidents required officer hospitalizations.
+```{r, eval=TRUE}
+data3 %>% group_by(OFFICER_HOSPITALIZATION) %>% summarize(count = n())%>%mutate(percentage =  100*(count/sum(count)))
+```
+
+### DISTRIBUTION OF ARRESTS WHERE SUBJECTS GOT INJURED
+From the table below, out of all the total arrests made by the Dallas Police Department in 2016, only 28.4% resulted in the subject getting injured while 78.6% of them resulted in no injuries to the subject
+```{r, eval=TRUE}
+data3 %>% group_by(SUBJECT_INJURY) %>% summarize(count = n())%>%mutate(percentage =  100*(count/sum(count)))
+```
+
+## CRIMES IN DALLAS IN 2016
+The plot below is a time series plot that documents the crimes in Dallas in the year 2016. It provides an overview of the crime trend in the city. From the graph it can be seen that October recorded the highest number of crimes on a single day, followed by March and February, respectively. Overall,the graph has a random variation, indicating that there was no distinct pattern in the crimes that were carried out in 2016. However at certain times in the course of the year, we can see up-trends forming. For example, from 30th July, 2016 through to 27th August, 2016, there was uptrend of crimes in the city.
+```{r, eval=TRUE}
+datasrs = data3 %>% group_by(INCIDENT_DATE) %>% summarize(count = n())
+G6 = ggplot(datasrs, aes(x = INCIDENT_DATE, y = count)) + geom_line(size=1) +geom_area(alpha=0.4,position="identity") +theme_bw()+ xlab('Timeline') + ylab('Number of Crimes') + ggtitle('TIMESERIES PLOT OF CRIMES IN DALLAS IN 2016') + theme(axis.title.y = element_text(vjust = 1.5, size = 12, face = 'bold'), plot.title = element_text(face = 'bold'), axis.title.x = element_text(face = 'bold', size = 11))
+(Fig9 <-ggplotly(G6))
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig9, 'Fig9.html')
+```
+
+
+## CRIMES COMMITED BY LOCATION
+The graph below shows the total crimes recorded by Dallas Police Department in the year 2016, organised by the districts in which they occurred. From the graph, it can be seen that there were about 500 arrests made in Central Division, indicating that it was the division with the most crime recorded in Dallas. The division that recorded the least crimes in Dallas was Northwest Division with Southeast coming in second with most crimes committed.
+```{r, eval=TRUE, warning=FALSE}
+data3 %>%
+  count(DIVISION) %>%
+  ggplot(aes(x = reorder(DIVISION, n),y = n)) + 
+  geom_col(fill="#756bb1") + 
+  labs(x = "Crime Location",
+       y = "Number of Crimes",
+       title = ("Crimes commited in 2016 by location")) +
+  coord_flip() +
+  theme_minimal()+
+  theme(axis.title.y = element_text(face = 'bold', size = 12), axis.title.x = element_text(face='bold'),axis.text.x = element_text(size =10))
+```
+
+## MAP OF CRIMES COMMITED IN DALLAS IN 2016
+The figure below is a map that outlines all crimes that had taken part in Dallas in 2016 which is a graphical representation of the crimes by location.
+```{r,eval=TRUE}
+(Fig10 <-data3 %>%
+  leaflet() %>%
+  addTiles() %>%
+  addMarkers(lng = ~ LOCATION_LONGITUDE, lat = ~LOCATION_LATITUDE))
+```
+
+```{r,echo=FALSE}
+htmlwidgets::saveWidget(Fig10, 'Fig10.html')
+```
+
+## CHECKING INDEPENDENCE AMONGST CERTAIN VARIABLES
+```{r, eval=TRUE}
+chisq.test(data2$OFFICER_RACE, data2$SUBJECT_RACE)
+chisq.test(data2$OFFICER_RACE, data2$SUBJECT_WAS_ARRESTED)
+chisq.test(data2$SUBJECT_WAS_ARRESTED, data2$INCIDENT_REASON)
+chisq.test(data2$OFFICER_YEARS_ON_FORCE, data2$INCIDENT_REASON)
+```
+From the above we are checking for independence amongst certain variables. The null hypothesis is that the comparing variables are dependent on each other with the alternative hypothesis being that the comparing variables are independent of each other. The level of significance is 0.05. From the above we can see that from the first equation since the level of significance is less than 0.05, we reject the null hypothesis and conclude that OFFICER_RACE is independent of SUBJECT_RACE.For the second equation, since the level of significance is greater than 0.05, we accept the null hypothesis and conclude that OFFICER_RACE is not independent of SUBJECT_WAS_ARRESTED. For the third equation, since  the level of significance is less than 0.05, we reject the null hypothesis and conclude that the SUBJECT_WAS_ARRESTED is independent of INCIDENT_REASON. For the fourth equation, since  the level of significance is less than 0.05, we reject the null hypothesis and conclude that the OFFICER_YEARS_ON_FORCE is independent of INCIDENT_REASON
+
+# CONCLUSIONS & RECOMMNEDATIONS
+We can conclude from the analysis that to balance gender equality in the Department more female officers need to be represented in the Department. More staff should also be recruited from the American Ind race to replace the older generation. It also seems that the number of years on the force is correlated to the number of arrests, as such more younger officers should be recruited to the Dallas police force. It was also noticed that White Police Officers were involved in arresting a lot of the Black Individuals in the community. The crime rate in Dallas also seems to be steady, as such, it is recommended more action should be geared towards influencing the crime rate to take a downward, moving trend. The missing values were also not removed in the dataset to prevent the data from being incomplete, however the in situation where they were to be removed we could have used to this code to assist in dealing with them *data2[complete.cases(data2),]*
